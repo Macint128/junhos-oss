@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>🍎 준호의 3버튼 챗봇</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background-color: #2c2c2e;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .title {
+      font-weight: bold;
+    }
+    #chat {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .bubble {
+      max-width: 70%;
+      padding: 0.7rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 1rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .user {
+      background-color: #3c3c3e;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+    .bot {
+      background-color: #2a2a2c;
+      align-self: flex-start;
+      margin-right: auto;
+    }
+    #input-container {
+      display: flex;
+      padding: 1rem;
+      background-color: #2c2c2e;
+      border-top: 1px solid #444;
+      gap: 0.5rem;
+    }
+    #prompt {
+      flex: 1;
+      padding: 0.6rem;
+      font-size: 1rem;
+      background-color: #1e1e1e;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 0.5rem;
+    }
+    .mac-button {
+      padding: 0.6rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: bold;
+      color: black;
+      cursor: pointer;
+    }
+    .red { background-color: #ff5f56; }
+    .yellow { background-color: #ffbd2e; }
+    .green { background-color: #27c93f; }
+    .mac-button:hover {
+      filter: brightness(90%);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">🍎 준호의 3버튼 챗봇</div>
+  </header>
+  <div id="chat"></div>
+  <div id="input-container">
+    <input type="text" id="prompt" placeholder="무엇이든 입력하세요!" />
+    <button class="mac-button red" onclick="handleSend('chat')">💬 전송</button>
+    <button class="mac-button yellow" onclick="handleSend('search')">🔍 요약 요청</button>
+    <button class="mac-button green" onclick="handleSend('system')">⚙️ 설정</button>
+  </div>
+  <script>
+    const chat = document.getElementById("chat");
+    const promptInput = document.getElementById("prompt");
+
+    function addBubble(text, isUser = false) {
+      const bubble = document.createElement("div");
+      bubble.classList.add("bubble", isUser ? "user" : "bot");
+      bubble.textContent = text;
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function handleSend(type) {
+      let prompt = promptInput.value.trim();
+      if (!prompt) return;
+
+      addBubble(prompt, true);
+      promptInput.value = "";
+
+      if (type === "chat") {
+        // 일반 대화 요청
+        await sendOllamaRequest(prompt);
+      } else if (type === "search") {
+        // 요약 요청: 구글 검색 요약 프롬프트로 변환
+        const searchPrompt = `다음 키워드에 대해 구글에서 검색한 결과를 요약해줘:\n${prompt}`;
+        await sendOllamaRequest(searchPrompt);
+      } else if (type === "system") {
+        // 시스템 메시지
+        addBubble(`⚙️ 시스템 메시지: "${prompt}"`, false);
+      }
+    }
+
+    async function sendOllamaRequest(prompt) {
+      try {
+        const res = await fetch("http://localhost:11434/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "openchat",
+            prompt,
+            stream: false,
+          }),
+        });
+
+        const data = await res.json();
+        addBubble(data.response, false);
+      } catch (err) {
+        addBubble("❌ 오류: Ollama 서버가 켜져 있나요?", false);
+        console.error(err);
+      }
+    }
+
+    promptInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") handleSend("chat");
+    });
+  </script>
+</body>
+</html>
